@@ -1,24 +1,16 @@
-import { assert, sameValueZero } from "./internal/utils.ts";
+import { assert, EMPTY, sameValueZero } from "./internal/utils.ts";
 import {
     ownKeys,
     apply,
-    defineProperty,
-    preventExtensions,
-    weakSetAdd,
-    WeakSet,
-    weakSetHas,
+    freeze,
     setAdd,
     setHas,
     Set,
+    setPrototypeOf,
+    objectPrototype,
+    sort,
 } from "./internal/originals.ts";
-import { maybeHashComposite, prepareLazyHash } from "./internal/hash.ts";
-
-const composites = new WeakSet(); // [[isComposite]] internal slot
-
-/** Nominal type to track Composite values */
-declare class __Composite__ {
-    #__composite__: never;
-}
+import { __Composite__, objectIsComposite, maybeGetCompositeHash, setHash } from "./internal/composite-class.ts";
 
 export type Composite = __Composite__;
 
@@ -30,39 +22,48 @@ export function Composite(arg: object): Composite {
         throw new TypeError("Composite should be constructed with an object");
     }
     const argKeys = ownKeys(arg);
-    const c = {};
-    apply(weakSetAdd, composites, [c]);
+    const c = new __Composite__();
+    const stringKeys: string[] = [];
     for (let i = 0; i < argKeys.length; i++) {
-        defineProperty(c, argKeys[i], {
-            configurable: false,
-            enumerable: true,
-            writable: false,
-            value: (arg as any)[argKeys[i]],
-        });
+        let k = argKeys[i];
+        if (typeof k === "string") {
+            stringKeys[stringKeys.length] = k;
+        } else {
+            DEV: assert(typeof k === "symbol");
+            (c as any)[k] = (arg as any)[k];
+        }
     }
-    preventExtensions(c);
-    prepareLazyHash(c as Composite);
-    return c as Composite;
+    apply(sort, stringKeys, EMPTY);
+    for (let i = 0; i < stringKeys.length; i++) {
+        let k = stringKeys[i];
+        (c as any)[k] = (arg as any)[k];
+    }
+    setPrototypeOf(c, objectPrototype);
+    freeze(c);
+    return c;
 }
 
 export function isComposite(arg: unknown): arg is Composite {
-    return apply(weakSetHas, composites, [arg]);
+    return typeof arg === "object" && arg !== null && objectIsComposite(arg);
 }
 Composite.isComposite = isComposite;
 
 export function compositeEqual(a: unknown, b: unknown): boolean {
     if (a === b) return true;
-    if (!isComposite(a) || !isComposite(b)) {
+
+    const maybeHashA = typeof a === "object" && a !== null ? maybeGetCompositeHash(a) : undefined;
+
+    const maybeHashB =
+        maybeHashA !== undefined && typeof b === "object" && b !== null ? maybeGetCompositeHash(b) : undefined;
+
+    if (maybeHashB === undefined) {
         return sameValueZero(a, b);
     }
 
-    const maybeHashA = maybeHashComposite(a);
-    if (maybeHashA !== undefined) {
-        const maybeHashB = maybeHashComposite(b);
-        if (maybeHashB !== undefined && maybeHashA !== maybeHashB) {
-            return false;
-        }
-    }
+    DEV: assert(maybeHashA !== undefined);
+    DEV: assert(isComposite(a));
+    DEV: assert(isComposite(b));
+    if (maybeHashA !== 0 && maybeHashB !== 0 && maybeHashA !== maybeHashB) return false;
 
     const aKeys = ownKeys(a);
     const bKeys = ownKeys(b);
@@ -75,6 +76,7 @@ export function compositeEqual(a: unknown, b: unknown): boolean {
         const aKey = aKeys[i];
         const bKey = bKeys[i];
         if (typeof aKey !== typeof bKey) {
+            // Different ratios of strings and symbols
             return false;
         }
         if (typeof aKey === "symbol") {
@@ -90,7 +92,7 @@ export function compositeEqual(a: unknown, b: unknown): boolean {
         }
     }
     if (firstSymbolIndex !== undefined) {
-        assert(symbolKeysB !== undefined);
+        DEV: assert(symbolKeysB !== undefined);
         for (let i = firstSymbolIndex; i < aKeys.length; i++) {
             if (!apply(setHas, symbolKeysB, [aKeys[i]])) {
                 return false;
@@ -106,6 +108,11 @@ export function compositeEqual(a: unknown, b: unknown): boolean {
         }
     }
 
+    if (maybeHashA === 0 && maybeHashB !== 0) {
+        setHash(a, maybeHashB);
+    } else if (maybeHashB === 0 && maybeHashA !== 0) {
+        setHash(b, maybeHashA);
+    }
     return true;
 }
 Composite.equal = compositeEqual;
