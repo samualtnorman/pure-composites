@@ -14,7 +14,7 @@ import { __Composite__, objectIsComposite, maybeGetCompositeHash, setHash } from
 
 export type Composite = __Composite__;
 
-export function Composite(arg: object): Composite {
+export function Composite<T extends object>(arg: T): Readonly<T> {
     if (new.target) {
         throw new TypeError("Composite should not be constructed with 'new'");
     }
@@ -40,7 +40,7 @@ export function Composite(arg: object): Composite {
     }
     setPrototypeOf(c, objectPrototype);
     freeze(c);
-    return c;
+    return c as any;
 }
 
 export function isComposite(arg: unknown): arg is Composite {

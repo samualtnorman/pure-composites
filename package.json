@@ -1,6 +1,6 @@
 {
     "private": true,
-    "name": "proposal-composites",
+    "name": "pure-composites",
     "description": "ECMAScript proposal for immutable values with structural equality",
     "type": "module",
     "scripts": {
@@ -13,12 +13,18 @@
     },
     "license": "MIT",
     "devDependencies": {
+        "@samual/rolldown-config": "jsr:0.0.1-eb70092",
         "@tc39/ecma262-biblio": "2.1.2862",
-        "ecmarkup": "^21.2.0",
         "@types/node": "^22.13.14",
-        "prettier": "^3.5.3"
+        "ecmarkup": "^21.2.0",
+        "prettier": "^3.5.3",
+        "rolldown": "1.0.0-beta.38",
+        "typescript": "^5.9.2"
     },
     "engines": {
         "node": ">= 18"
+    },
+    "exports": {
+        ".": "./default.js"
     }
 }

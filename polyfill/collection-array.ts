@@ -2,12 +2,14 @@ import { isComposite, compositeEqual, type Composite } from "./composite.ts";
 import { hashComposite } from "./internal/hash.ts";
 import { apply, includes, indexOf, lastIndexOf, freeze } from "./internal/originals.ts";
 
-export function arrayPrototypeIncludes<T>(this: T[], value: T): boolean {
-    if (isComposite(value)) {
-        return arrayPrototypeCompositeIndexOf(this, value, /* reverse: */ false) !== -1;
-    }
+export const { arrayPrototypeIncludes } = {
+    arrayPrototypeIncludes<T>(this: T[], value: T): boolean {
+        if (isComposite(value)) {
+            return arrayPrototypeCompositeIndexOf(this, value, /* reverse: */ false) !== -1;
+        }
 
-    return apply(includes, this, [value]);
+        return apply(includes, this, [value]);
+    }
 }
 
 function arrayPrototypeCompositeIndexOf<T>(arr: T[], value: Composite, reverse: boolean): number {
@@ -25,18 +27,22 @@ function arrayPrototypeCompositeIndexOf<T>(arr: T[], value: Composite, reverse: 
     return -1;
 }
 
-export function arrayPrototypeIndexOf<T>(this: T[], value: T): number {
-    if (isComposite(value)) {
-        return arrayPrototypeCompositeIndexOf(this, value, /* reverse:*/ false);
+export const { arrayPrototypeIndexOf } = {
+    arrayPrototypeIndexOf<T>(this: T[], value: T): number {
+        if (isComposite(value)) {
+            return arrayPrototypeCompositeIndexOf(this, value, /* reverse:*/ false);
+        }
+        return apply(indexOf, this, [value]);
     }
-    return apply(indexOf, this, [value]);
 }
 
-export function arrayPrototypeLastIndexOf<T>(this: T[], value: T): number {
-    if (isComposite(value)) {
-        return arrayPrototypeCompositeIndexOf(this, value, /* reverse:*/ true);
+export const { arrayPrototypeLastIndexOf } = {
+    arrayPrototypeLastIndexOf<T>(this: T[], value: T): number {
+        if (isComposite(value)) {
+            return arrayPrototypeCompositeIndexOf(this, value, /* reverse:*/ true);
+        }
+        return apply(lastIndexOf, this, [value]);
     }
-    return apply(lastIndexOf, this, [value]);
 }
 
 export const arrayPrototypeMethods = freeze({

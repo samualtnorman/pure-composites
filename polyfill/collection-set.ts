@@ -25,155 +25,177 @@ function requireInternalSlot(that: unknown): void {
     apply(setSize, that, EMPTY);
 }
 
-function setPrototypeAdd<T>(this: Set<T>, value: T): Set<T> {
-    requireInternalSlot(this);
-    const valueToUse = resolveKey(this, value, /* create */ true);
-    apply(setAdd, this, [valueToUse]);
-    return this;
+const { setPrototypeAdd } = {
+    setPrototypeAdd<T>(this: Set<T>, value: T): Set<T> {
+        requireInternalSlot(this);
+        const valueToUse = resolveKey(this, value, /* create */ true);
+        apply(setAdd, this, [valueToUse]);
+        return this;
+    }
 }
 
-function setPrototypeClear(this: Set<any>): void {
-    requireInternalSlot(this);
-    apply(setClear, this, EMPTY);
-    clearCompMap(this);
+const { setPrototypeClear } = {
+    setPrototypeClear(this: Set<any>): void {
+        requireInternalSlot(this);
+        apply(setClear, this, EMPTY);
+        clearCompMap(this);
+    }
 }
 
-function setPrototypeDelete<T>(this: Set<T>, value: T): boolean {
-    requireInternalSlot(this);
-    if (!isComposite(value)) {
-        return apply(setDelete, this, [value]);
+const { setPrototypeDelete } = {
+    setPrototypeDelete<T>(this: Set<T>, value: T): boolean {
+        requireInternalSlot(this);
+        if (!isComposite(value)) {
+            return apply(setDelete, this, [value]);
+        }
+        const existingKey = deleteKey(this, value);
+        if (!existingKey) {
+            return false;
+        }
+        apply(setDelete, this, [existingKey]);
+        return true;
     }
-    const existingKey = deleteKey(this, value);
-    if (!existingKey) {
-        return false;
-    }
-    apply(setDelete, this, [existingKey]);
-    return true;
 }
 
-function setPrototypeHas(this: Set<any>, value: any): boolean {
-    requireInternalSlot(this);
-    const valueToUse = resolveKey(this, value, /* create */ false);
-    if (valueToUse === missing) {
-        return false;
+const { setPrototypeHas } = {
+    setPrototypeHas(this: Set<any>, value: any): boolean {
+        requireInternalSlot(this);
+        const valueToUse = resolveKey(this, value, /* create */ false);
+        if (valueToUse === missing) {
+            return false;
+        }
+        return apply(setHas, this, [valueToUse]);
     }
-    return apply(setHas, this, [valueToUse]);
 }
 
-function setPrototypeUnion(this: Set<any>, other: ReadonlySetLike<any>): Set<any> {
-    requireInternalSlot(this);
-    const otherSet = getSetRecord(other);
-    const result = new Set<any>();
-    for (const value of setIterator(this)) {
-        apply(setPrototypeAdd, result, [value]);
-    }
-    for (const value of otherSet.keys()) {
-        apply(setPrototypeAdd, result, [value]);
-    }
-    return result;
-}
-
-function setPrototypeIntersection<T, U>(this: Set<T>, other: ReadonlySetLike<U>): Set<T & U> {
-    requireInternalSlot(this);
-    const otherSet = getSetRecord(other);
-    const result = new Set<any>();
-    if (apply(setSize, this, EMPTY) <= otherSet.size) {
+const { setPrototypeUnion } = {
+    setPrototypeUnion(this: Set<any>, other: ReadonlySetLike<any>): Set<any> {
+        requireInternalSlot(this);
+        const otherSet = getSetRecord(other);
+        const result = new Set<any>();
         for (const value of setIterator(this)) {
-            if (otherSet.has(value)) {
-                apply(setPrototypeAdd, result, [value]);
-            }
+            apply(setPrototypeAdd, result, [value]);
         }
-    } else {
         for (const value of otherSet.keys()) {
-            if (apply(setPrototypeHas, this, [value])) {
-                apply(setPrototypeAdd, result, [value]);
-            }
+            apply(setPrototypeAdd, result, [value]);
         }
+        return result;
     }
-    return result;
 }
 
-function setPrototypeDifference<T, U>(this: Set<T>, other: ReadonlySetLike<U>): Set<T> {
-    requireInternalSlot(this);
-    const otherSet = getSetRecord(other);
-    const result = new Set<any>();
-    for (const value of setIterator(this)) {
-        apply(setPrototypeAdd, result, [value]);
+const { setPrototypeIntersection } = {
+    setPrototypeIntersection<T, U>(this: Set<T>, other: ReadonlySetLike<U>): Set<T & U> {
+        requireInternalSlot(this);
+        const otherSet = getSetRecord(other);
+        const result = new Set<any>();
+        if (apply(setSize, this, EMPTY) <= otherSet.size) {
+            for (const value of setIterator(this)) {
+                if (otherSet.has(value)) {
+                    apply(setPrototypeAdd, result, [value]);
+                }
+            }
+        } else {
+            for (const value of otherSet.keys()) {
+                if (apply(setPrototypeHas, this, [value])) {
+                    apply(setPrototypeAdd, result, [value]);
+                }
+            }
+        }
+        return result;
     }
-    if (result.size <= otherSet.size) {
-        for (const value of result) {
-            if (otherSet.has(value)) {
+}
+
+const { setPrototypeDifference } = {
+    setPrototypeDifference<T, U>(this: Set<T>, other: ReadonlySetLike<U>): Set<T> {
+        requireInternalSlot(this);
+        const otherSet = getSetRecord(other);
+        const result = new Set<any>();
+        for (const value of setIterator(this)) {
+            apply(setPrototypeAdd, result, [value]);
+        }
+        if (result.size <= otherSet.size) {
+            for (const value of result) {
+                if (otherSet.has(value)) {
+                    apply(setPrototypeDelete, result, [value]);
+                }
+            }
+        } else {
+            for (const value of otherSet.keys()) {
                 apply(setPrototypeDelete, result, [value]);
             }
         }
-    } else {
-        for (const value of otherSet.keys()) {
-            apply(setPrototypeDelete, result, [value]);
-        }
+        return result;
     }
-    return result;
 }
 
-function setPrototypeSymmetricDifference<T, U>(this: Set<T>, other: ReadonlySetLike<U>): Set<T | U> {
-    requireInternalSlot(this);
-    const otherSet = getSetRecord(other);
-    const result = new Set<any>();
-    for (const value of setIterator(this)) {
-        if (!otherSet.has(value)) {
-            apply(setPrototypeAdd, result, [value]);
-        }
-    }
-    for (const value of otherSet.keys()) {
-        if (!apply(setPrototypeHas, this, [value])) {
-            apply(setPrototypeAdd, result, [value]);
-        }
-    }
-    return result;
-}
-
-function setPrototypeIsSubsetOf<T, U>(this: Set<T>, other: ReadonlySetLike<U>): boolean {
-    requireInternalSlot(this);
-    const otherSet = getSetRecord(other);
-    if (apply(setSize, this, EMPTY) > otherSet.size) return false;
-    for (const value of setIterator(this)) {
-        if (!otherSet.has(value)) {
-            return false;
-        }
-    }
-    return true;
-}
-
-function setPrototypeIsSupersetOf<T, U>(this: Set<T>, other: ReadonlySetLike<U>): boolean {
-    requireInternalSlot(this);
-    const otherSet = getSetRecord(other);
-    if (apply(setSize, this, EMPTY) < otherSet.size) return false;
-    for (const value of otherSet.keys()) {
-        if (!apply(setPrototypeHas, this, [value])) {
-            return false;
-        }
-    }
-    return true;
-}
-
-function setPrototypeIsDisjointFrom<T, U>(this: Set<T>, other: ReadonlySetLike<U>): boolean {
-    requireInternalSlot(this);
-    const otherSet = getSetRecord(other);
-
-    if (apply(setSize, this, EMPTY) <= otherSet.size) {
+const { setPrototypeSymmetricDifference } = {
+    setPrototypeSymmetricDifference<T, U>(this: Set<T>, other: ReadonlySetLike<U>): Set<T | U> {
+        requireInternalSlot(this);
+        const otherSet = getSetRecord(other);
+        const result = new Set<any>();
         for (const value of setIterator(this)) {
-            if (otherSet.has(value)) {
-                return false;
+            if (!otherSet.has(value)) {
+                apply(setPrototypeAdd, result, [value]);
             }
         }
-    } else {
         for (const value of otherSet.keys()) {
-            if (apply(setPrototypeHas, this, [value])) {
+            if (!apply(setPrototypeHas, this, [value])) {
+                apply(setPrototypeAdd, result, [value]);
+            }
+        }
+        return result;
+    }
+}
+
+const { setPrototypeIsSubsetOf } = {
+    setPrototypeIsSubsetOf<T, U>(this: Set<T>, other: ReadonlySetLike<U>): boolean {
+        requireInternalSlot(this);
+        const otherSet = getSetRecord(other);
+        if (apply(setSize, this, EMPTY) > otherSet.size) return false;
+        for (const value of setIterator(this)) {
+            if (!otherSet.has(value)) {
                 return false;
             }
         }
+        return true;
     }
+}
 
-    return true;
+const { setPrototypeIsSupersetOf } = {
+    setPrototypeIsSupersetOf<T, U>(this: Set<T>, other: ReadonlySetLike<U>): boolean {
+        requireInternalSlot(this);
+        const otherSet = getSetRecord(other);
+        if (apply(setSize, this, EMPTY) < otherSet.size) return false;
+        for (const value of otherSet.keys()) {
+            if (!apply(setPrototypeHas, this, [value])) {
+                return false;
+            }
+        }
+        return true;
+    }
+}
+
+const { setPrototypeIsDisjointFrom } = {
+    setPrototypeIsDisjointFrom<T, U>(this: Set<T>, other: ReadonlySetLike<U>): boolean {
+        requireInternalSlot(this);
+        const otherSet = getSetRecord(other);
+
+        if (apply(setSize, this, EMPTY) <= otherSet.size) {
+            for (const value of setIterator(this)) {
+                if (otherSet.has(value)) {
+                    return false;
+                }
+            }
+        } else {
+            for (const value of otherSet.keys()) {
+                if (apply(setPrototypeHas, this, [value])) {
+                    return false;
+                }
+            }
+        }
+
+        return true;
+    }
 }
 
 const setIteratorProto = {
